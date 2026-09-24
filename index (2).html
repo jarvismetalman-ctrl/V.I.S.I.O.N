@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V.I.S.I.O.N</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14100a;--glow:#3a2b08;--gold:#ffc61a;--soft:#ffdf6b;--dim:rgba(255,198,26,.35);--faint:rgba(255,198,26,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:'Rajdhani',sans-serif;color:var(--gold);background:radial-gradient(ellipse at 50% 45%,var(--glow) 0%,var(--bg) 70%)}
+.grid{position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(var(--faint) 1px,transparent 1px),linear-gradient(90deg,var(--faint) 1px,transparent 1px),linear-gradient(rgba(255,198,26,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(255,198,26,.16) 1px,transparent 1px);background-size:30px 30px,30px 30px,150px 150px,150px 150px;background-position:center;-webkit-mask-image:radial-gradient(circle at 50% 50%,#000 15%,transparent 85%);mask-image:radial-gradient(circle at 50% 50%,#000 15%,transparent 85%)}
+#particles{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+.corner{position:fixed;top:28px;font-family:'Orbitron',sans-serif;text-shadow:0 0 12px var(--dim);z-index:5}
+.tl{left:32px}.tr{right:32px;text-align:right}
+.name{font-size:22px;font-weight:700;letter-spacing:.22em}
+.status{margin-top:8px;display:flex;align-items:center;gap:10px;font:600 16px 'Rajdhani',sans-serif;letter-spacing:.18em}
+.dot{width:9px;height:9px;border-radius:50%;background:#5dff9a;box-shadow:0 0 10px #5dff9a;animation:pulse 2s ease-in-out infinite}
+.status.off .dot{background:#ff5b3a;box-shadow:0 0 10px #ff5b3a}
+@keyframes pulse{50%{opacity:.35}}
+.time{font-size:30px;font-weight:500;letter-spacing:.12em;font-variant-numeric:tabular-nums}
+.date{margin-top:6px;font:600 16px 'Rajdhani',sans-serif;letter-spacing:.16em;color:var(--soft)}
+
+.stage{position:fixed;inset:0;display:grid;place-items:center;padding-bottom:70px}
+#core{width:min(74vmin,700px);height:min(74vmin,700px);overflow:visible;filter:drop-shadow(0 0 18px rgba(255,198,26,.35));transform:scale(calc(1 + var(--lvl,0)*.05));transition:filter .3s}
+.cw,.ccw,.fast,.slow{transform-origin:400px 400px}
+.cw{animation:cw 40s linear infinite}.ccw{animation:ccw 26s linear infinite}.fast{animation:cw 9s linear infinite}.slow{animation:ccw 70s linear infinite}
+@keyframes cw{to{transform:rotate(360deg)}}@keyframes ccw{to{transform:rotate(-360deg)}}
+.breathe{transform-origin:400px 400px;animation:br 4s ease-in-out infinite}
+@keyframes br{50%{opacity:.55;transform:scale(1.06)}}
+.label{font:900 34px 'Orbitron',sans-serif;letter-spacing:.14em;fill:var(--soft);text-anchor:middle;filter:drop-shadow(0 0 8px rgba(255,198,26,.9))}
+.sub{font:500 14px 'Rajdhani',sans-serif;letter-spacing:.3em;fill:var(--gold);text-anchor:middle}
+body.thinking .fast{animation-duration:1.6s}body.thinking .breathe{animation-duration:1s}
+body.speaking .breathe{animation-duration:.7s}body.speaking #core{filter:drop-shadow(0 0 32px rgba(255,198,26,.7))}
+
+/* Chat */
+#vx{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:min(720px,92vw);z-index:20;color:var(--soft)}
+#log{max-height:34vh;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
+#log:empty{display:none}
+.msg{padding:10px 14px;border:1px solid var(--dim);background:rgba(20,14,4,.85);backdrop-filter:blur(6px);font-size:17px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.msg.user{align-self:flex-end;max-width:80%;border-color:rgba(255,198,26,.6);color:#fff3c4}
+.msg.err{color:#ff8a70;border-color:rgba(255,91,58,.5)}
+.msg pre{background:rgba(0,0,0,.45);padding:8px 10px;margin:6px 0;overflow-x:auto;font:14px ui-monospace,Menlo,Consolas,monospace;white-space:pre}
+.msg code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em;color:var(--gold)}
+#bar{display:flex;gap:8px;border:1px solid var(--gold);background:rgba(20,14,4,.92);padding:8px;box-shadow:0 0 18px rgba(255,198,26,.25)}
+#in{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff3c4;font:600 18px 'Rajdhani',sans-serif;letter-spacing:.04em;padding:6px 8px;cursor:text}
+#in::placeholder{color:rgba(255,198,26,.5)}
+button{background:transparent;color:var(--gold);border:1px solid rgba(255,198,26,.6);font:700 12px 'Orbitron',sans-serif;letter-spacing:.1em;padding:8px 12px;cursor:pointer}
+button:hover,button:focus-visible{background:var(--gold);color:var(--bg);outline:0}
+button:disabled{opacity:.4;cursor:wait}button.dim{opacity:.45;text-decoration:line-through}
+
+/* Aim reticle */
+@media (hover:hover) and (pointer:fine){html,body,button{cursor:none}}
+#aim,#aimdot{position:fixed;top:0;left:0;pointer-events:none;z-index:9999;opacity:0;transition:opacity .25s}
+#aim.on,#aimdot.on{opacity:1}
+#aim{width:90px;height:90px;margin:-45px 0 0 -45px;filter:drop-shadow(0 0 6px rgba(255,198,26,.8))}
+#aim svg{width:100%;height:100%;overflow:visible}
+#aim .ring{transform-origin:45px 45px;animation:cw 8s linear infinite}
+#aim .br{transform-origin:45px 45px;transition:transform .25s}
+#aim.lock .br{transform:scale(.68) rotate(45deg)}#aim.lock .ring{animation-duration:2s}
+#aim.click .br{transform:scale(.5)}#aim.lock.click .br{transform:scale(.5) rotate(45deg)}
+#aimdot{width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#ffe98a;box-shadow:0 0 8px var(--gold)}
+@media (hover:none),(pointer:coarse){#aim,#aimdot{display:none}}
+@media (max-width:560px){.name{font-size:16px}.time{font-size:20px}.corner{top:16px}.tl{left:16px}.tr{right:16px}.status,.date{font-size:13px}}
+@media (prefers-reduced-motion:reduce){.cw,.ccw,.fast,.slow,.breathe,.dot,#aim .ring{animation:none}}
+</style>
+</head>
+<body>
+<div class="grid"></div>
+<canvas id="particles"></canvas>
+
+<div class="corner tl"><div class="name">V.I.S.I.O.N</div>
+  <div class="status" id="status"><span class="dot"></span><span id="stxt">SYSTEM ONLINE</span></div></div>
+<div class="corner tr"><div class="time" id="time">--:--:--</div><div class="date" id="date">---</div></div>
+
+<div class="stage">
+<svg id="core" viewBox="0 0 800 800" aria-label="V.I.S.I.O.N core">
+  <defs><radialGradient id="cf"><stop offset="0" stop-color="#ffe98a" stop-opacity=".45"/><stop offset=".6" stop-color="#ffc61a" stop-opacity=".12"/><stop offset="1" stop-color="#ffc61a" stop-opacity="0"/></radialGradient></defs>
+  <circle class="breathe" cx="400" cy="400" r="200" fill="url(#cf)"/>
+  <g class="slow"><circle cx="400" cy="400" r="370" fill="none" stroke="#ffc61a" stroke-opacity=".25"/>
+    <circle cx="400" cy="400" r="362" fill="none" stroke="#ffc61a" stroke-opacity=".5" stroke-width="6" stroke-dasharray="1 11.3"/></g>
+  <g class="cw" fill="none" stroke="#ffc61a" stroke-linecap="round">
+    <circle cx="400" cy="400" r="335" stroke-width="3" stroke-opacity=".9" stroke-dasharray="380 200 120 200 260 200 90 240"/>
+    <circle cx="400" cy="400" r="322" stroke-opacity=".6" stroke-dasharray="4 6"/></g>
+  <g class="ccw"><circle cx="400" cy="400" r="295" fill="none" stroke="#ffdf6b" stroke-width="14" stroke-opacity=".35" stroke-dasharray="2 13.2"/>
+    <circle cx="400" cy="400" r="282" fill="none" stroke="#ffc61a" stroke-width="4" stroke-linecap="round" stroke-dasharray="210 120 60 90 180 100 40 60"/></g>
+  <g class="fast" fill="none" stroke="#ffe98a" stroke-linecap="round" style="filter:drop-shadow(0 0 6px #ffc61a)">
+    <circle cx="400" cy="400" r="250" stroke-width="5" stroke-dasharray="170 700"/>
+    <circle cx="400" cy="400" r="250" stroke-width="5" stroke-dasharray="90 700" stroke-dashoffset="-785"/></g>
+  <g class="ccw" style="animation-duration:14s" fill="none" stroke="#ffc61a" stroke-linecap="round">
+    <circle cx="400" cy="400" r="215" stroke-width="2" stroke-opacity=".8" stroke-dasharray="120 60 30 60 200 60 60 60"/>
+    <circle cx="400" cy="400" r="200" stroke-width="8" stroke-opacity=".5" stroke-dasharray="3 9"/></g>
+  <circle cx="400" cy="400" r="165" fill="rgba(20,14,4,.7)" stroke="#ffc61a" stroke-width="2.5" style="filter:drop-shadow(0 0 8px #ffc61a)"/>
+  <g class="cw" style="animation-duration:20s" fill="none" stroke="#ffc61a" stroke-opacity=".7">
+    <circle cx="400" cy="400" r="140" stroke-dasharray="2 5"/><path d="M400 245v18M400 555v-18M245 400h18M555 400h-18" stroke-width="2"/></g>
+  <text class="label" x="400" y="392" dominant-baseline="middle">V.I.S.I.O.N</text>
+  <text class="sub" x="400" y="428">CORE ACTIVE</text>
+</svg>
+</div>
+
+<div id="vx">
+  <div id="log" aria-live="polite"></div>
+  <div id="bar">
+    <input id="in" type="text" placeholder="Ask V.I.S.I.O.N anything..." autocomplete="off">
+    <button id="send">SEND</button><button id="voice" title="Spoken replies on/off">VOICE</button>
+  </div>
+</div>
+
+<div id="aim" aria-hidden="true"><svg viewBox="0 0 90 90" fill="none" stroke="#ffc61a" stroke-linecap="round">
+  <circle class="ring" cx="45" cy="45" r="30" stroke-width="1.5" stroke-dasharray="14 8 4 8"/>
+  <g class="br" stroke-width="2.5"><path d="M14 30V14H30M60 14H76V30M76 60V76H60M30 76H14V60"/><path d="M45 2v8M45 80v8M2 45h8M80 45h8" stroke-width="1.5"/></g></svg></div>
+<div id="aimdot" aria-hidden="true"></div>
+
+<script>
+/* ---------- Config ---------- */
+// Paste your Cloudflare Worker URL here (e.g. https://vision-proxy.yourname.workers.dev)
+const WORKER_URL='PASTE_YOUR_WORKER_URL_HERE';
+const store={get:k=>{try{return localStorage.getItem(k)||''}catch{return''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch{}}};
+let voiceOn=store.get('vx_voice')!=='off';
+const $=id=>document.getElementById(id);
+const ttsUrl=()=>WORKER_URL.replace(/\/+$/,'')+'/tts';
+
+/* ---------- Clock + status ---------- */
+function tick(){const d=new Date();$('time').textContent=d.toLocaleTimeString([],{hour12:false});
+  $('date').textContent=d.toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'}).toUpperCase()}
+tick();setInterval(tick,1000);
+const setOn=o=>{$('status').classList.toggle('off',!o);$('stxt').textContent=o?'SYSTEM ONLINE':'SYSTEM OFFLINE'};
+setOn(navigator.onLine);addEventListener('online',()=>setOn(true));addEventListener('offline',()=>setOn(false));
+
+/* ---------- Voice ---------- */
+const synth=window.speechSynthesis;
+// Browser fallback voice (used only if the Fish Audio voice fails): deep + slow.
+const BV={pitch:.55,rate:.86};
+const PREFER=['Daniel','Google UK English Male','Microsoft Ryan','Microsoft George','Arthur','Oliver'];
+let bvoice=null;
+function pick(){if(!synth)return;const all=synth.getVoices().filter(v=>/^en/i.test(v.lang)),gb=all.filter(v=>/en[-_]GB/i.test(v.lang));
+  for(const n of PREFER){const h=gb.find(v=>v.name.includes(n))||all.find(v=>v.name.includes(n));if(h){bvoice=h;return}}bvoice=gb[0]||all[0]||null}
+if(synth){pick();synth.onvoiceschanged=pick}
+const syncVoice=()=>$('voice').classList.toggle('dim',!voiceOn);syncVoice();
+
+let actx,shelf,analyser,cur=null;
+function audio(){ // Web Audio chain: bass boost for a darker tone + level meter that drives the core
+  if(!actx){actx=new(window.AudioContext||window.webkitAudioContext)();
+    shelf=actx.createBiquadFilter();shelf.type='lowshelf';shelf.frequency.value=220;shelf.gain.value=7;
+    const warm=actx.createBiquadFilter();warm.type='highshelf';warm.frequency.value=5000;warm.gain.value=-4;
+    analyser=actx.createAnalyser();analyser.fftSize=512;
+    shelf.connect(warm);warm.connect(analyser);analyser.connect(actx.destination)}
+  if(actx.state==='suspended')actx.resume()}
+const lv=new Uint8Array(512),core=$('core');
+(function meter(){let m=0;if(cur&&analyser){analyser.getByteTimeDomainData(lv);for(const v of lv)m=Math.max(m,Math.abs(v-128))}
+  core.style.setProperty('--lvl',(m/128).toFixed(3));requestAnimationFrame(meter)})();
+
+const speakable=t=>t.replace(/```[\s\S]*?```/g,' I have put the code on screen. ').replace(/`([^`]+)`/g,'$1').replace(/\*\*?([^*]+)\*\*?/g,'$1').replace(/https?:\/\/\S+/g,'a link').replace(/\s+/g,' ').trim();
+let token=0;
+function stopSpeaking(){token++;if(synth)synth.cancel();if(cur){try{cur.stop()}catch{}cur=null}document.body.classList.remove('speaking')}
+function chunks(t,max=450){const out=[];let c='';
+  for(const s of t.match(/[^.!?]+[.!?]*\s*/g)||[t]){if((c+s).length>max&&c){out.push(c.trim());c=''}c+=s}
+  if(c.trim())out.push(c.trim());return out}
+async function clip(text){
+  const r=await fetch(ttsUrl(),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})});
+  if(!r.ok){let m='';try{m=(await r.json()).error}catch{}throw new Error(m||('Voice '+r.status))}
+  return actx.decodeAudioData(await r.arrayBuffer())}
+async function speakFish(t){ // fetch every chunk at once, play them back to back
+  const my=token,clips=chunks(t).map(clip);clips.forEach(p=>p.catch(()=>{}));let played=false;
+  try{
+    for(const c of clips){
+      const buf=await c;if(my!==token)return;
+      if(!played){document.body.classList.add('speaking');played=true}
+      await new Promise(res=>{const src=actx.createBufferSource();src.buffer=buf;src.connect(shelf);cur=src;src.onended=res;src.start()});
+      if(my!==token)return}
+  }catch(e){if(!played)throw e}
+  finally{if(my===token){cur=null;document.body.classList.remove('speaking')}}}
+function speakBrowser(t){
+  const parts=t.match(/[^.!?]+[.!?]*\s*/g)||[];
+  parts.forEach((c,i)=>{const u=new SpeechSynthesisUtterance(c.trim());if(bvoice){u.voice=bvoice;u.lang=bvoice.lang}Object.assign(u,BV);
+    if(i===0)u.onstart=()=>document.body.classList.add('speaking');
+    if(i===parts.length-1)u.onend=u.onerror=()=>document.body.classList.remove('speaking');synth.speak(u)})}
+async function speak(text){
+  stopSpeaking();if(!voiceOn)return;const t=speakable(text);
+  if(!WORKER_URL.startsWith('PASTE')){try{await speakFish(t);return}catch(e){add('err','Voice failed ('+e.message+'). Using the browser voice.')}}
+  if(synth)speakBrowser(t)}
+$('voice').onclick=()=>{voiceOn=!voiceOn;store.set('vx_voice',voiceOn?'on':'off');if(!voiceOn)stopSpeaking();syncVoice();audio();if(voiceOn)speak('Voice online.')};
+
+/* ---------- Brain ---------- */
+const history=[],log=$('log'),input=$('in');
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmt=t=>esc(t).replace(/```(?:\w+)?\n?([\s\S]*?)```/g,(_,c)=>`<pre>${c}</pre>`).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
+function add(role,text){const d=document.createElement('div');d.className='msg '+role;d.innerHTML=fmt(text);log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+
+async function ask(){
+  const q=input.value.trim();if(!q)return;
+  if(WORKER_URL.startsWith('PASTE')){add('err','Set WORKER_URL in the script first.');return}
+  audio();stopSpeaking();input.value='';add('user',q);history.push({role:'user',content:q});
+  $('send').disabled=true;document.body.classList.add('thinking');const b=add('ai','...');
+  try{
+    const r=await fetch(WORKER_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages:history.slice(-20)})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||('Request failed ('+r.status+')'));
+    const reply=d.reply;
+    history.push({role:'assistant',content:reply});b.innerHTML=fmt(reply);speak(reply);
+  }catch(e){history.pop();b.className='msg err';b.textContent='Error: '+e.message+(/fetch/i.test(e.message)?' (check WORKER_URL and that ALLOWED_ORIGIN matches this page address)':'')}
+  finally{$('send').disabled=false;document.body.classList.remove('thinking');log.scrollTop=log.scrollHeight;input.focus()}
+}
+$('send').onclick=ask;input.addEventListener('keydown',e=>{if(e.key==='Enter')ask()});
+
+/* ---------- Particles ---------- */
+const cv=$('particles'),cx=cv.getContext('2d');let W,H;
+function rs(){const d=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;cx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',rs);rs();
+const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,ps=[];
+function sp(p={}){p.x=W/2+(Math.random()-.5)*Math.min(W,H)*.22;p.y=H/2+(Math.random()-.5)*30;p.vy=.4+Math.random()*1.3;p.vx=(Math.random()-.5)*.35;
+  p.r=.6+Math.random()*1.8;p.life=0;p.max=120+Math.random()*260;p.sw=Math.random()*6.28;return p}
+for(let i=0;i<140;i++){const p=sp();p.life=Math.random()*p.max;ps.push(p)}
+(function fr(){cx.clearRect(0,0,W,H);
+  for(const p of ps){if(!reduce){p.life++;p.y-=p.vy;p.x+=p.vx+Math.sin(p.life*.02+p.sw)*.25}
+    if(p.life>p.max||p.y<-10)sp(p);const t=p.life/p.max;
+    cx.beginPath();cx.arc(p.x,p.y,p.r,0,6.283);cx.fillStyle=`rgba(255,${190+50*(1-t)|0},60,${Math.sin(Math.PI*t)*.85})`;
+    cx.shadowColor='rgba(255,198,26,.9)';cx.shadowBlur=8;cx.fill()}
+  requestAnimationFrame(fr)})();
+
+/* ---------- Aim reticle ---------- */
+if(!matchMedia('(hover:none),(pointer:coarse)').matches){
+  const a=$('aim'),dt=$('aimdot');let mx=innerWidth/2,my=innerHeight/2,x=mx,y=my;
+  addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;dt.style.transform=`translate(${mx}px,${my}px)`;a.classList.add('on');dt.classList.add('on');
+    a.classList.toggle('lock',!!e.target.closest('a,button,input'))});
+  document.addEventListener('mouseleave',()=>{a.classList.remove('on');dt.classList.remove('on')});
+  addEventListener('mousedown',()=>a.classList.add('click'));addEventListener('mouseup',()=>a.classList.remove('click'));
+  (function lp(){x+=(mx-x)*.22;y+=(my-y)*.22;a.style.transform=`translate(${x}px,${y}px)`;requestAnimationFrame(lp)})()}
+</script>
+</body>
+</html>
