@@ -1,0 +1,163 @@
+<!-- ===== V.I.S.I.O.N AI CHAT (backend + spoken replies) =====
+     Paste this whole block just before </body> in your index.html.
+     Replace the old ai.html block if you added it. Set WORKER_URL below. -->
+
+<style>
+  #vx { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+        width: min(720px, 92vw); z-index: 50; font-family: 'Rajdhani', sans-serif; color: #ffdf6b; }
+  #vx-log { max-height: 42vh; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+  #vx-log:empty { display: none; }
+  .vx-msg { padding: 10px 14px; border: 1px solid rgba(255,198,26,.35); background: rgba(20,14,4,.82);
+            backdrop-filter: blur(6px); font-size: 17px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }
+  .vx-msg.user { align-self: flex-end; max-width: 80%; border-color: rgba(255,198,26,.6); color: #fff3c4; }
+  .vx-msg.ai { align-self: flex-start; box-shadow: 0 0 14px rgba(255,198,26,.12); }
+  .vx-msg.err { color: #ff8a70; border-color: rgba(255,91,58,.5); }
+  .vx-msg pre { background: rgba(0,0,0,.45); padding: 8px 10px; margin: 6px 0; overflow-x: auto;
+                font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; white-space: pre; }
+  .vx-msg code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; color: #ffc61a; }
+  #vx-bar { display: flex; gap: 8px; border: 1px solid #ffc61a; background: rgba(20,14,4,.9);
+            padding: 8px; box-shadow: 0 0 18px rgba(255,198,26,.25); }
+  #vx-in { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff3c4;
+           font: 600 18px 'Rajdhani', sans-serif; letter-spacing: .04em; padding: 6px 8px; }
+  #vx-in::placeholder { color: rgba(255,198,26,.5); }
+  #vx-bar button { background: transparent; color: #ffc61a; border: 1px solid rgba(255,198,26,.6);
+                   font: 700 12px 'Orbitron', sans-serif; letter-spacing: .1em; padding: 0 12px; cursor: pointer; }
+  #vx-bar button:hover, #vx-bar button:focus-visible { background: #ffc61a; color: #14100a; outline: 0; }
+  #vx-bar button:disabled { opacity: .4; cursor: wait; }
+  #vx-bar button.off { opacity: .45; text-decoration: line-through; }
+  /* Core reacts: faster while thinking, breathing glow while speaking */
+  body.thinking .spin-fast { animation-duration: 1.6s; }
+  body.thinking .core-glow { animation-duration: 1s; }
+  body.speaking .core-glow { animation-duration: .7s; }
+  body.speaking #core { filter: drop-shadow(0 0 30px rgba(255,198,26,.65)); }
+</style>
+
+<div id="vx">
+  <div id="vx-log" aria-live="polite"></div>
+  <div id="vx-bar">
+    <input id="vx-in" type="text" placeholder="Ask V.I.S.I.O.N anything..." autocomplete="off">
+    <button id="vx-send">SEND</button>
+    <button id="vx-voice" title="Turn spoken replies on/off">VOICE</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // 1) After deploying worker.js, paste its URL here (e.g. https://vision.yourname.workers.dev)
+  const WORKER_URL = 'PASTE_YOUR_WORKER_URL_HERE';
+
+  // 2) Voice tuning: lower pitch + slower rate = calmer, more deliberate delivery
+  const VOICE = { pitch: 0.78, rate: 0.88, volume: 1 };
+  // Preferred voices, best first (British male voices suit V.I.S.I.O.N best). Names differ per device/browser.
+  const PREFER = ['Daniel', 'Google UK English Male', 'Microsoft Ryan', 'Microsoft George', 'Arthur', 'Oliver', 'Male'];
+
+  const log = document.getElementById('vx-log');
+  const input = document.getElementById('vx-in');
+  const sendBtn = document.getElementById('vx-send');
+  const voiceBtn = document.getElementById('vx-voice');
+  const history = [];
+
+  /* ---------- Formatting ---------- */
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  function fmt(text) {
+    return esc(text)
+      .replace(/```(?:\w+)?\n?([\s\S]*?)```/g, (_, c) => `<pre>${c}</pre>`)
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
+  }
+  function add(role, text) {
+    const d = document.createElement('div');
+    d.className = 'vx-msg ' + role;
+    d.innerHTML = fmt(text);
+    log.appendChild(d); log.scrollTop = log.scrollHeight;
+    return d;
+  }
+
+  /* ---------- Speech ---------- */
+  const synth = window.speechSynthesis;
+  let voiceOn = localStorage.getItem('vx_voice') !== 'off';
+  let chosen = null;
+  function syncVoiceBtn() { voiceBtn.classList.toggle('off', !voiceOn || !synth); }
+  syncVoiceBtn();
+
+  function pickVoice() {
+    if (!synth) return;
+    const all = synth.getVoices().filter(v => /^en/i.test(v.lang));
+    if (!all.length) return;
+    const gb = all.filter(v => /en[-_]GB/i.test(v.lang));
+    for (const name of PREFER) {
+      const hit = gb.find(v => v.name.includes(name)) || all.find(v => v.name.includes(name));
+      if (hit) { chosen = hit; return; }
+    }
+    chosen = gb[0] || all[0];
+  }
+  if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
+
+  // Turn a reply into speakable text: skip code, strip markdown, split into sentence chunks
+  function speakable(text) {
+    return text
+      .replace(/```[\s\S]*?```/g, ' I have put the code on screen. ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*?([^*]+)\*\*?/g, '$1')
+      .replace(/https?:\/\/\S+/g, 'a link')
+      .replace(/\s+/g, ' ').trim();
+  }
+  function speak(text) {
+    if (!synth || !voiceOn) return;
+    synth.cancel();
+    const chunks = speakable(text).match(/[^.!?]+[.!?]*\s*/g) || [];   // short chunks avoid Chrome cutting off long speech
+    chunks.forEach((c, i) => {
+      const u = new SpeechSynthesisUtterance(c.trim());
+      if (chosen) { u.voice = chosen; u.lang = chosen.lang; }
+      Object.assign(u, VOICE);
+      if (i === 0) u.onstart = () => document.body.classList.add('speaking');
+      if (i === chunks.length - 1) u.onend = u.onerror = () => document.body.classList.remove('speaking');
+      synth.speak(u);
+    });
+  }
+  function stopSpeaking() { if (synth) synth.cancel(); document.body.classList.remove('speaking'); }
+
+  voiceBtn.onclick = () => {
+    voiceOn = !voiceOn;
+    localStorage.setItem('vx_voice', voiceOn ? 'on' : 'off');
+    if (!voiceOn) stopSpeaking();
+    syncVoiceBtn();
+    if (voiceOn) speak('Voice online.');
+  };
+
+  /* ---------- Chat ---------- */
+  async function ask() {
+    const q = input.value.trim();
+    if (!q) return;
+    if (WORKER_URL.startsWith('PASTE')) { add('err', 'Set WORKER_URL in the script first (see worker.js).'); return; }
+
+    stopSpeaking();
+    input.value = ''; add('user', q);
+    history.push({ role: 'user', content: q });
+    sendBtn.disabled = true; document.body.classList.add('thinking');
+    const bubble = add('ai', '...');
+
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ messages: history.slice(-20) })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      history.push({ role: 'assistant', content: data.reply });
+      bubble.innerHTML = fmt(data.reply);
+      speak(data.reply);
+    } catch (e) {
+      history.pop();
+      bubble.className = 'vx-msg err';
+      bubble.textContent = 'Error: ' + e.message;
+    } finally {
+      sendBtn.disabled = false; document.body.classList.remove('thinking');
+      log.scrollTop = log.scrollHeight; input.focus();
+    }
+  }
+  sendBtn.onclick = ask;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+})();
+</script>
