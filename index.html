@@ -115,7 +115,7 @@ button:disabled{opacity:.4;cursor:wait}button.dim{opacity:.45;text-decoration:li
 <script>
 /* ---------- Config ---------- */
 // Paste your Cloudflare Worker URL here (e.g. https://vision-proxy.yourname.workers.dev)
-const WORKER_URL='PASTE_YOUR_WORKER_URL_HERE';
+const WORKER_URL='muddy-sun-11d9.jarvismetalman.workers.dev';
 const store={get:k=>{try{return localStorage.getItem(k)||''}catch{return''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch{}}};
 let voiceOn=store.get('vx_voice')!=='off';
 const $=id=>document.getElementById(id);
